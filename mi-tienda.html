@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Tienda — Link in Bio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FDF8F3;
+    --blush: #F2C4B0;
+    --coral: #E8745A;
+    --deep: #1A1010;
+    --muted: #7A6060;
+    --white: #FFFFFF;
+    --shadow: rgba(26,16,16,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--deep);
+    min-height: 100vh;
+  }
+
+  /* EDITOR PANEL */
+  #editor {
+    position: fixed;
+    top: 0; left: 0;
+    width: 320px;
+    height: 100vh;
+    background: var(--white);
+    box-shadow: 4px 0 24px var(--shadow);
+    overflow-y: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+  }
+  #editor.hidden { transform: translateX(-320px); }
+
+  .editor-header {
+    background: var(--deep);
+    color: var(--white);
+    padding: 24px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .editor-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    letter-spacing: .5px;
+  }
+  .editor-header p { font-size: .75rem; color: var(--blush); margin-top: 4px; }
+
+  .editor-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid #F0E8E4;
+  }
+  .editor-section h3 {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .field { margin-bottom: 10px; }
+  .field label { font-size: .78rem; color: var(--muted); display: block; margin-bottom: 4px; }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    border: 1.5px solid #E8DDD8;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .82rem;
+    color: var(--deep);
+    background: var(--cream);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--coral); }
+  .field textarea { resize: vertical; min-height: 56px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .82rem;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--coral); color: #fff; }
+  .btn-primary:hover { background: #d4604a; transform: translateY(-1px); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--coral); color: var(--coral); }
+  .btn-outline:hover { background: var(--coral); color: #fff; }
+  .btn-danger { background: #fee; color: #c44; border: 1.5px solid #fcc; }
+  .btn-danger:hover { background: #c44; color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: .75rem; }
+
+  /* Products list in editor */
+  .prod-item {
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow .2s;
+  }
+  .prod-item:hover { box-shadow: 0 2px 12px var(--shadow); }
+  .prod-item.dragging { opacity: .4; }
+  .prod-thumb {
+    width: 38px; height: 38px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #eee;
+    flex-shrink: 0;
+  }
+  .prod-thumb-placeholder {
+    width: 38px; height: 38px;
+    border-radius: 6px;
+    background: #E8DDD8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-info strong { font-size: .82rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prod-info span { font-size: .72rem; color: var(--muted); }
+  .prod-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* PREVIEW */
+  #preview {
+    margin-left: 320px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+    transition: margin-left .35s cubic-bezier(.4,0,.2,1);
+  }
+  #preview.full { margin-left: 0; }
+
+  .profile-card {
+    text-align: center;
+    margin-bottom: 32px;
+    animation: fadeUp .6s ease both;
+  }
+  .avatar-wrap {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    background: var(--blush);
+    overflow: hidden;
+    border: 3px solid var(--white);
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+  .avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-initials {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--deep);
+  }
+  .profile-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.55rem;
+    font-weight: 900;
+    letter-spacing: -.5px;
+  }
+  .profile-handle { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+  .profile-bio { font-size: .88rem; color: var(--muted); margin-top: 8px; max-width: 320px; line-height: 1.5; }
+
+  /* Badges */
+  .badges { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .3px;
+  }
+  .badge-shein { background: #fff0f5; color: #d42068; border: 1.5px solid #f9c; }
+  .badge-amazon { background: #fff8ee; color: #c47400; border: 1.5px solid #ffd694; }
+  .badge-other { background: #f0f4ff; color: #3a5fd9; border: 1.5px solid #b8c9ff; }
+
+  /* Category tabs */
+  .categories {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeUp .6s .1s ease both;
+  }
+  .cat-tab {
+    padding: 7px 18px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    background: var(--white);
+    color: var(--muted);
+    box-shadow: 0 2px 8px var(--shadow);
+    transition: all .2s;
+  }
+  .cat-tab.active, .cat-tab:hover {
+    background: var(--coral);
+    color: #fff;
+    border-color: var(--coral);
+    transform: translateY(-1px);
+  }
+
+  /* Grid */
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 440px;
+    animation: fadeUp .6s .2s ease both;
+  }
+  @media (min-width: 600px) {
+    .shop-grid { grid-template-columns: repeat(3, 1fr); max-width: 620px; }
+  }
+
+  .product-card {
+    background: var(--white);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px var(--shadow);
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 32px var(--shadow); }
+
+  .card-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: #f0e8e4;
+  }
+  .card-img-placeholder {
+    width: 100%;
+    aspect-ratio: 1;
+    background: linear-gradient(135deg, #F2C4B0 0%, #E8DDD8 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+  }
+  .card-body { padding: 10px 12px 12px; }
+  .card-store {
+    font-size: .65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .store-shein { color: #d42068; }
+  .store-amazon { color: #c47400; }
+  .store-other { color: #3a5fd9; }
+  .card-name {
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-price {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--coral);
+    margin-top: 5px;
+  }
+  .card-cta {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--coral);
+    text-decoration: none;
+    border-bottom: 1.5px solid currentColor;
+    letter-spacing: .3px;
+  }
+
+  /* Toggle editor button (mobile) */
+  #toggleEditor {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 200;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--deep);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  #toggleEditor:hover { background: var(--coral); transform: scale(1.08); }
+
+  /* Share bar */
+  .share-bar {
+    position: fixed;
+    top: 0; left: 320px; right: 0;
+    height: 52px;
+    background: var(--white);
+    border-bottom: 1px solid #F0E8E4;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 24px;
+    gap: 10px;
+    z-index: 50;
+    box-shadow: 0 1px 8px var(--shadow);
+    transition: left .35s cubic-bezier(.4,0,.2,1);
+  }
+  .share-bar.full { left: 0; }
+  .share-bar span { font-size: .78rem; color: var(--muted); margin-right: auto; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: fadeIn .2s ease;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    margin-bottom: 18px;
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Copied toast */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    background: var(--deep);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: .82rem;
+    z-index: 500;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- EDITOR PANEL -->
+<div id="editor">
+  <div class="editor-header">
+    <h2>✨ Mi Tienda Afiliada</h2>
+    <p>Personaliza tu página link-in-bio</p>
+  </div>
+
+  <!-- Profile -->
+  <div class="editor-section">
+    <h3>Tu Perfil</h3>
+    <div class="field">
+      <label>Nombre / Marca</label>
+      <input type="text" id="inName" placeholder="Ej: Sofía López" oninput="render()">
+    </div>
+    <div class="field">
+      <label>Usuario (@)</label>
+      <input type="text" id="inHandle" placeholder="@tu_usuario" oninput="render()">
+    </div>
+    <div class="field">
+      <label>Bio</label>
+      <textarea id="inBio" placeholder="Ej: Mis favoritos de moda y hogar ✨" oninput="render()"></textarea>
+    </div>
+    <div class="field">
+      <label>URL foto de perfil (opcional)</label>
+      <input type="text" id="inAvatar" placeholder="https://..." oninput="render()">
+    </div>
+  </div>
+
+  <!-- Add product -->
+  <div class="editor-section">
+    <h3>Agregar Producto</h3>
+    <div class="field">
+      <label>Nombre del producto *</label>
+      <input type="text" id="pName" placeholder="Ej: Vestido floral verano">
+    </div>
+    <div class="field">
+      <label>Tienda *</label>
+      <select id="pStore">
+        <option value="shein">Shein</option>
+        <option value="amazon">Amazon</option>
+        <option value="other">Otra tienda</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <input type="text" id="pCat" placeholder="Ej: Moda, Hogar, Belleza...">
+    </div>
+    <div class="field">
+      <label>Precio (ej: 12,99€)</label>
+      <input type="text" id="pPrice" placeholder="12,99€">
+    </div>
+    <div class="field">
+      <label>Link de afiliado *</label>
+      <input type="text" id="pUrl" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>URL imagen (opcional)</label>
+      <input type="text" id="pImg" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>Emoji (si no hay imagen)</label>
+      <input type="text" id="pEmoji" placeholder="👗" maxlength="2" style="width:60px">
+    </div>
+    <button class="btn btn-primary" onclick="addProduct()" style="width:100%; justify-content: center; margin-top:4px">
+      + Agregar a la tienda
+    </button>
+  </div>
+
+  <!-- Products list -->
+  <div class="editor-section" id="productListSection">
+    <h3>Productos (<span id="prodCount">0</span>)</h3>
+    <div id="productList"></div>
+  </div>
+</div>
+
+<!-- SHARE BAR -->
+<div class="share-bar" id="shareBar">
+  <span id="barLabel">👁 Vista previa de tu tienda</span>
+  <button class="btn btn-outline btn-sm" onclick="copyLink()">🔗 Copiar enlace</button>
+  <button class="btn btn-primary btn-sm" onclick="saveToFile()">💾 Guardar HTML</button>
+</div>
+
+<!-- PREVIEW -->
+<div id="preview" style="margin-top:52px">
+  <!-- Profile -->
+  <div class="profile-card" id="profileCard"></div>
+
+  <!-- Categories -->
+  <div class="categories" id="categoryTabs"></div>
+
+  <!-- Grid -->
+  <div class="shop-grid" id="shopGrid"></div>
+</div>
+
+<!-- Toggle button -->
+<button id="toggleEditor" onclick="toggleEditor()" title="Abrir/cerrar editor">✏️</button>
+
+<!-- Add product modal on edit -->
+<div class="modal-overlay hidden" id="editModal">
+  <div class="modal">
+    <h3>✏️ Editar Producto</h3>
+    <div class="field"><label>Nombre *</label><input type="text" id="eName"></div>
+    <div class="field"><label>Tienda *</label>
+      <select id="eStore">
+        <option value="shein">Shein</option>
+        <option value="amazon">Amazon</option>
+        <option value="other">Otra</option>
+      </select>
+    </div>
+    <div class="field"><label>Categoría</label><input type="text" id="eCat"></div>
+    <div class="field"><label>Precio</label><input type="text" id="ePrice"></div>
+    <div class="field"><label>Link afiliado *</label><input type="text" id="eUrl"></div>
+    <div class="field"><label>URL imagen</label><input type="text" id="eImg"></div>
+    <div class="field"><label>Emoji</label><input type="text" id="eEmoji" maxlength="2" style="width:60px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEdit()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let products = [];
+let activeCategory = 'all';
+let editIdx = null;
+let editorOpen = true;
+
+// Default demo data
+const defaults = {
+  name: 'Sofía López',
+  handle: '@sofi.looks',
+  bio: '✨ Mis favoritos de moda, hogar y belleza · Links de afiliado',
+  avatar: ''
+};
+
+['inName','inHandle','inBio','inAvatar'].forEach(id => {
+  const k = id.replace('in','').toLowerCase();
+  if (id === 'inName') document.getElementById(id).value = defaults.name;
+  if (id === 'inHandle') document.getElementById(id).value = defaults.handle;
+  if (id === 'inBio') document.getElementById(id).value = defaults.bio;
+});
+
+// Demo products
+products = [
+  { name:'Vestido floral verano', store:'shein', cat:'Moda', price:'14,99€', url:'#', img:'', emoji:'👗' },
+  { name:'Mascarilla hidratante', store:'shein', cat:'Belleza', price:'8,50€', url:'#', img:'', emoji:'🧖' },
+  { name:'Auriculares inalámbricos', store:'amazon', cat:'Tech', price:'29,99€', url:'#', img:'', emoji:'🎧' },
+  { name:'Organizador de ropa', store:'amazon', cat:'Hogar', price:'18,99€', url:'#', img:'', emoji:'🧺' },
+  { name:'Crema SPF 50', store:'amazon', cat:'Belleza', price:'12,99€', url:'#', img:'', emoji:'☀️' },
+  { name:'Top efecto satén', store:'shein', cat:'Moda', price:'11,99€', url:'#', img:'', emoji:'✨' },
+];
+
+function getCategories() {
+  const cats = ['all', ...new Set(products.map(p => p.cat).filter(Boolean))];
+  return cats;
+}
+
+function render() {
+  renderProfile();
+  renderCategories();
+  renderGrid();
+  renderEditorList();
+}
+
+function renderProfile() {
+  const name = document.getElementById('inName').value || 'Tu Nombre';
+  const handle = document.getElementById('inHandle').value || '@usuario';
+  const bio = document.getElementById('inBio').value || '';
+  const avatar = document.getElementById('inAvatar').value || '';
+
+  const hasShein = products.some(p => p.store === 'shein');
+  const hasAmazon = products.some(p => p.store === 'amazon');
+
+  const avatarHtml = avatar
+    ? `<img src="${avatar}" onerror="this.style.display='none'">`
+    : `<div class="avatar-initials">${name.charAt(0).toUpperCase()}</div>`;
+
+  document.getElementById('profileCard').innerHTML = `
+    <div class="avatar-wrap">${avatarHtml}</div>
+    <div class="profile-name">${name}</div>
+    <div class="profile-handle">${handle}</div>
+    ${bio ? `<div class="profile-bio">${bio}</div>` : ''}
+    <div class="badges">
+      ${hasShein ? `<span class="badge badge-shein">🛍 Afiliada Shein</span>` : ''}
+      ${hasAmazon ? `<span class="badge badge-amazon">📦 Afiliada Amazon</span>` : ''}
+    </div>
+  `;
+  document.getElementById('barLabel').innerHTML = `👁 ${name} · ${products.length} productos`;
+}
+
+function renderCategories() {
+  const cats = getCategories();
+  document.getElementById('categoryTabs').innerHTML = cats.map(c => `
+    <button class="cat-tab ${activeCategory===c?'active':''}" onclick="filterCat('${c}')">
+      ${c === 'all' ? '🛒 Todo' : c}
+    </button>
+  `).join('');
+}
+
+function filterCat(cat) {
+  activeCategory = cat;
+  renderCategories();
+  renderGrid();
+}
+
+function renderGrid() {
+  const filtered = activeCategory === 'all' ? products : products.filter(p => p.cat === activeCategory);
+  const grid = document.getElementById('shopGrid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🛍</div><p>Añade tu primer producto desde el panel ✨</p></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map((p, i) => {
+    const realIdx = products.indexOf(p);
+    const storeClass = p.store === 'shein' ? 'store-shein' : p.store === 'amazon' ? 'store-amazon' : 'store-other';
+    const storeName = p.store === 'shein' ? 'Shein' : p.store === 'amazon' ? 'Amazon' : p.store;
+    const imgHtml = p.img
+      ? `<img class="card-img" src="${p.img}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const placeholderHtml = `<div class="card-img-placeholder" ${p.img?'style="display:none"':''}>${p.emoji||'🛍'}</div>`;
+    return `
+      <a class="product-card" href="${p.url||'#'}" target="_blank" rel="nofollow noopener">
+        ${imgHtml}${placeholderHtml}
+        <div class="card-body">
+          <div class="card-store ${storeClass}">${storeName}</div>
+          <div class="card-name">${p.name}</div>
+          ${p.price ? `<div class="card-price">${p.price}</div>` : ''}
+          <span class="card-cta">Ver oferta →</span>
+        </div>
+      </a>
+    `;
+  }).join('');
+}
+
+function renderEditorList() {
+  const list = document.getElementById('productList');
+  document.getElementById('prodCount').textContent = products.length;
+  if (!products.length) { list.innerHTML = '<p style="font-size:.78rem;color:var(--muted);text-align:center;padding:10px">Sin productos aún</p>'; return; }
+  list.innerHTML = products.map((p, i) => {
+    const storeName = p.store === 'shein' ? '🛍 Shein' : p.store === 'amazon' ? '📦 Amazon' : p.store;
+    return `
+      <div class="prod-item" draggable="true" data-idx="${i}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="drop(event,${i})">
+        <div class="prod-thumb-placeholder">${p.emoji||'🛍'}</div>
+        <div class="prod-info">
+          <strong>${p.name}</strong>
+          <span>${storeName} · ${p.cat||'Sin categoría'} · ${p.price||'—'}</span>
+        </div>
+        <div class="prod-actions">
+          <button class="btn btn-outline btn-sm" onclick="openEdit(${i})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct(${i})">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+let dragSrc = null;
+function dragStart(e) { dragSrc = +e.currentTarget.dataset.idx; e.currentTarget.classList.add('dragging'); }
+function dragOver(e) { e.preventDefault(); }
+function drop(e, targetIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.prod-item').forEach(el => el.classList.remove('dragging'));
+  if (dragSrc === null || dragSrc === targetIdx) return;
+  const [item] = products.splice(dragSrc, 1);
+  products.splice(targetIdx, 0, item);
+  render();
+}
+
+function addProduct() {
+  const name = document.getElementById('pName').value.trim();
+  const url = document.getElementById('pUrl').value.trim();
+  if (!name) { showToast('⚠️ Añade un nombre al producto'); return; }
+  if (!url) { showToast('⚠️ Añade el link de afiliado'); return; }
+  products.push({
+    name,
+    store: document.getElementById('pStore').value,
+    cat: document.getElementById('pCat').value.trim() || 'General',
+    price: document.getElementById('pPrice').value.trim(),
+    url,
+    img: document.getElementById('pImg').value.trim(),
+    emoji: document.getElementById('pEmoji').value.trim() || '🛍',
+  });
+  ['pName','pCat','pPrice','pUrl','pImg','pEmoji'].forEach(id => document.getElementById(id).value = '');
+  render();
+  showToast('✅ Producto añadido');
+}
+
+function deleteProduct(i) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  products.splice(i, 1);
+  render();
+}
+
+function openEdit(i) {
+  editIdx = i;
+  const p = products[i];
+  document.getElementById('eName').value = p.name;
+  document.getElementById('eStore').value = p.store;
+  document.getElementById('eCat').value = p.cat || '';
+  document.getElementById('ePrice').value = p.price || '';
+  document.getElementById('eUrl').value = p.url || '';
+  document.getElementById('eImg').value = p.img || '';
+  document.getElementById('eEmoji').value = p.emoji || '';
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEdit() { document.getElementById('editModal').classList.add('hidden'); editIdx = null; }
+
+function saveEdit() {
+  if (editIdx === null) return;
+  products[editIdx] = {
+    name: document.getElementById('eName').value.trim() || products[editIdx].name,
+    store: document.getElementById('eStore').value,
+    cat: document.getElementById('eCat').value.trim() || 'General',
+    price: document.getElementById('ePrice').value.trim(),
+    url: document.getElementById('eUrl').value.trim(),
+    img: document.getElementById('eImg').value.trim(),
+    emoji: document.getElementById('eEmoji').value.trim() || '🛍',
+  };
+  closeEdit();
+  render();
+  showToast('✅ Producto actualizado');
+}
+
+function toggleEditor() {
+  editorOpen = !editorOpen;
+  document.getElementById('editor').classList.toggle('hidden', !editorOpen);
+  document.getElementById('preview').classList.toggle('full', !editorOpen);
+  document.getElementById('shareBar').classList.toggle('full', !editorOpen);
+  document.getElementById('toggleEditor').textContent = editorOpen ? '✏️' : '👁';
+  if (!editorOpen) {
+    document.getElementById('preview').style.marginLeft = '0';
+    document.getElementById('shareBar').style.left = '0';
+  } else {
+    document.getElementById('preview').style.marginLeft = '320px';
+    document.getElementById('shareBar').style.left = '320px';
+  }
+}
+
+function copyLink() {
+  const text = window.location.href;
+  navigator.clipboard?.writeText(text).then(() => showToast('🔗 Enlace copiado'));
+}
+
+function saveToFile() {
+  // Build a standalone clean HTML
+  const name = document.getElementById('inName').value || 'Mi Tienda';
+  const handle = document.getElementById('inHandle').value || '';
+  const bio = document.getElementById('inBio').value || '';
+  const avatar = document.getElementById('inAvatar').value || '';
+
+  const html = buildStaticPage(name, handle, bio, avatar, products);
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mi-tienda.html';
+  a.click();
+  showToast('💾 Página guardada');
+}
+
+function buildStaticPage(name, handle, bio, avatar, prods) {
+  const hasShein = prods.some(p=>p.store==='shein');
+  const hasAmazon = prods.some(p=>p.store==='amazon');
+  const cards = prods.map(p => {
+    const sc = p.store==='shein'?'store-shein':p.store==='amazon'?'store-amazon':'store-other';
+    const sn = p.store==='shein'?'Shein':p.store==='amazon'?'Amazon':p.store;
+    const img = p.img ? `<img class="card-img" src="${p.img}">` : `<div class="card-img-placeholder">${p.emoji||'🛍'}</div>`;
+    return `<a class="product-card" href="${p.url||'#'}" target="_blank" rel="nofollow noopener">${img}<div class="card-body"><div class="card-store ${sc}">${sn}</div><div class="card-name">${p.name}</div>${p.price?`<div class="card-price">${p.price}</div>`:''}<span class="card-cta">Ver oferta →</span></div></a>`;
+  }).join('');
+  const avHtml = avatar ? `<img src="${avatar}">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;font-family:serif">${name.charAt(0)}</div>`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#FDF8F3;color:#1A1010;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px 60px}.avatar-wrap{width:88px;height:88px;border-radius:50%;margin:0 auto 12px;background:#F2C4B0;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 20px rgba(0,0,0,.1)}.avatar-wrap img{width:100%;height:100%;object-fit:cover}.profile-card{text-align:center;margin-bottom:32px}.profile-name{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:900}.profile-handle{font-size:.82rem;color:#7A6060;margin-top:2px}.profile-bio{font-size:.88rem;color:#7A6060;margin-top:8px;max-width:320px;line-height:1.5}.badges{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:500}.badge-shein{background:#fff0f5;color:#d42068;border:1.5px solid #f9c}.badge-amazon{background:#fff8ee;color:#c47400;border:1.5px solid #ffd694}.shop-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;width:100%;max-width:440px}@media(min-width:600px){.shop-grid{grid-template-columns:repeat(3,1fr);max-width:620px}}.product-card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);text-decoration:none;color:inherit;display:block;transition:transform .2s}.product-card:hover{transform:translateY(-4px)}.card-img{width:100%;aspect-ratio:1;object-fit:cover}.card-img-placeholder{width:100%;aspect-ratio:1;background:linear-gradient(135deg,#F2C4B0,#E8DDD8);display:flex;align-items:center;justify-content:center;font-size:2.5rem}.card-body{padding:10px 12px 12px}.card-store{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}.store-shein{color:#d42068}.store-amazon{color:#c47400}.store-other{color:#3a5fd9}.card-name{font-size:.82rem;font-weight:500;line-height:1.3}.card-price{font-size:.88rem;font-weight:700;color:#E8745A;margin-top:5px}.card-cta{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:600;color:#E8745A;border-bottom:1.5px solid currentColor}</style></head>
+  <body><div class="profile-card"><div class="avatar-wrap">${avHtml}</div><div class="profile-name">${name}</div>${handle?`<div class="profile-handle">${handle}</div>`:''} ${bio?`<div class="profile-bio">${bio}</div>`:''}<div class="badges">${hasShein?'<span class="badge badge-shein">🛍 Afiliada Shein</span>':''}${hasAmazon?'<span class="badge badge-amazon">📦 Afiliada Amazon</span>':''}</div></div><div class="shop-grid">${cards}</div></body></html>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
